@@ -141,7 +141,7 @@ router.post("/login", async (req, res) => {
     subscribe(email, subscription);
 
     const token = jwt.sign(
-      { id: user.User_id, name: user.name, user_type: user.user_type },
+      { id: user.user_id, name: user.name, user_type: user.user_type },
       JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -157,6 +157,7 @@ router.post("/login", async (req, res) => {
 //route to return all user data related to their account
 router.get("/account_data", userAuthenticate, async (req, res) => {
   const userId = req.user.user_id;
+  console.log(userId);
 
   try {
     const connection = await pool.getConnection();
