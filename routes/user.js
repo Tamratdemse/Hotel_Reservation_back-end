@@ -154,6 +154,93 @@ router.post("/login", async (req, res) => {
   }
 });
 
+//route to return all user data related to their account
+router.get("/account_data", userAuthenticate, async (req, res) => {
+  const userId = req.user.user_id;
+  console.log(userId);
+
+  try {
+    const connection = await pool.getConnection();
+
+    const [user] = await connection.query(
+      "SELECT * FROM users WHERE user_id = ?",
+      [userId]
+    );
+
+    connection.release();
+
+    if (user.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(user[0]); // Return the user data
+  } catch (error) {
+    console.error("Error querying database:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+//update account info ,,, idialy update the specific data, but actually all datas
+
+router.put("/account_update", userAuthenticate, async (req, res) => {
+  const userId = req.user.user_id; // Get the user_id from the token payload
+  const { name, email, phone_number, id_card_front, id_card_back, password } =
+    req.body;
+
+  try {
+    const connection = await pool.getConnection();
+
+    // Update the password if it's provided
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await connection.query(
+        "UPDATE users SET password = ? WHERE User_id = ?",
+        [hashedPassword, userId]
+      );
+    }
+
+    // Update other fields
+    const [result] = await connection.query(
+      "UPDATE users SET name = ?, email = ?, phone_number = ?, id_card_photo_front = ?, id_card_photo_back = ? WHERE User_id = ?",
+      [name, email, phone_number, id_card_front, id_card_back, userId]
+    );
+
+    connection.release();
+
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ error: "User not found or no changes made" });
+    }
+
+    res.json({ message: "Account updated successfully" });
+  } catch (error) {
+    console.error("Error updating database:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+router.post("/rate-hotel", userAuthenticate, async (req, res) => {
+  const { hotel_id, rating, user_id } = req.body;
+
+  try {
+    const connection = await pool.getConnection();
+
+    // Insert the rating into the Ratings table
+    const query =
+      "INSERT INTO Ratings (hotel_id, rating, user_id) VALUES (?, ?, ?)";
+    await connection.query(query, [hotel_id, rating, user_id]);
+
+    // Release the connection back to the pool
+    connection.release();
+
+    res.status(200).json({ message: "Rating submitted successfully" });
+  } catch (err) {
+    console.error("Error inserting rating:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 // Protected Reservation Endpoint
 router.post("/reservation", userAuthenticate, async (req, res) => {
   const { hotel_id, category_id, duration } = req.body;
