@@ -3,7 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { subscribe } = require("../../utility/notification");
+const { subscribe } = require("../../utility/notificationSender");
 
 const loginRouter = express.Router();
 const pool = require("../../configration/db");

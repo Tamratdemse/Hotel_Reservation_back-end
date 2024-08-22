@@ -32,14 +32,10 @@ dashboardRouter.get("/", authenticateToken, async (req, res) => {
       "SELECT * FROM Reservation WHERE hotel_id = ? AND reservation_status = 'pending'",
       [req.admin.hotel_id]
     );
-
-    console.log([req.admin.admin_id]);
-    console.log([req.admin.hotel_id]);
-
-    const [notifications] = await connection.query(
-      "SELECT * FROM Notifications WHERE admin_id = ?",
-      [req.admin.admin_id]
-    );
+    // const [notifications] = await connection.query(
+    //   "SELECT * FROM Notifications WHERE user_id = ?",
+    //   [req.admin.admin_id]
+    // );
 
     connection.release();
 
@@ -47,7 +43,7 @@ dashboardRouter.get("/", authenticateToken, async (req, res) => {
       hotel: hotelDetails[0],
       categories,
       pending_reservations: reservations,
-      notifications,
+      // notifications,
     });
   } catch (error) {
     console.error("Error querying database:", error);

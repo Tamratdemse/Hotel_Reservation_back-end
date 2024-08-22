@@ -28,21 +28,20 @@ categoryRouter.get("/", authenticateToken, async (req, res) => {
 
 // Admin Add Category
 categoryRouter.post("/addcategory", authenticateToken, async (req, res) => {
-  const { name, price, rooms } = req.body;
+  const { name, price, description, rooms } = req.body;
 
   try {
     const connection = await pool.getConnection();
 
     // Insert the new category into the Category table
     const [categoryResult] = await connection.query(
-      "INSERT INTO Category (category_name, price, hotel_id) VALUES (?, ?, ?)",
-      [name, price, req.admin.hotel_id]
+      "INSERT INTO Category (category_name, price,description, hotel_id) VALUES (?, ?,?, ?)",
+      [name, price, description, req.admin.hotel_id]
     );
 
     const categoryId = categoryResult.insertId;
 
     // Insert rooms into the Rooms table
-
 
     const roomValues = rooms.map((roomNumber) => [
       (roomId = GenerateRoomNumber(roomNumber, categoryId, req.admin.hotel_id)),

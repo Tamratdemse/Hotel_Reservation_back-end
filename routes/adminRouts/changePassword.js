@@ -8,7 +8,7 @@ const pool = require("../../configration/db");
 
 // Admin Change Password
 changepasswordRouter.post("/", authenticateToken, async (req, res) => {
-  const { oldPassword, newPassword } = req.body;
+  const {  newPassword } = req.body;
 
   try {
     const connection = await pool.getConnection();
@@ -22,31 +22,12 @@ changepasswordRouter.post("/", authenticateToken, async (req, res) => {
       connection.release();
       return res.status(400).json({ error: "Admin not found" });
     }
-
-    const admin = admins[0];
-    const pass = await bcrypt.hash("newpassword", 10);
-    console.log(pass);
-
-    console.log(admin.password);
-
-    const isOldPasswordValid = await bcrypt.compare(
-      oldPassword,
-      admin.password
-    );
-
-    
-    if (!isOldPasswordValid) {
-      connection.release();
-      return res.status(400).json({ error: "Old password is incorrect" });
-    }
-
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
     await connection.query(
       "UPDATE admins SET password = ? WHERE admin_id = ?",
       [hashedNewPassword, req.admin.admin_id]
     );
-
     connection.release();
     res.status(200).json({ message: "Password changed successfully" });
   } catch (error) {

@@ -8,10 +8,13 @@ const notificationRouter = express.Router();
 notificationRouter.get("/", authenticateToken, async (req, res) => {
   try {
     const connection = await pool.getConnection();
-
-    const [notifications] = await connection.query(
-      "SELECT * FROM Notifications WHERE admin_id = ? ORDER BY created_at DESC",
+    const [admin] = await connection.query(
+      "SELECT email FROM users WHERE user_id = ? ",
       [req.admin.admin_id]
+    );
+    const [notifications] = await connection.query(
+      "SELECT * FROM Notifications WHERE user_id = ? ORDER BY created_at DESC",
+      [admin[0].email]
     );
 
     connection.release();

@@ -10,7 +10,7 @@ const pool = require("../../configration/db");
 
 // Admin Manual Reservation
 manualreservationRouter.post(
-  "/manualreserve",
+  "/",
   authenticateToken,
   async (req, res) => {
     const { name, phone_number, category_id, duration } = req.body;

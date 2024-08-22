@@ -3,7 +3,7 @@ const express = require("express");
 const reservationRouter = express.Router();
 const { authenticateToken } = require("../../utility/auth");
 const pool = require("../../configration/db");
-const { sendNotificationn } = require("../../utility/notification");
+const { sendNotificationn } = require("../../utility/notificationSender");
 const { GenerateRoomNumber } = require("../../utility/utils");
 
 // Admin Get All Reservations
@@ -21,7 +21,7 @@ reservationRouter.get("/", authenticateToken, async (req, res) => {
 
     const [manualReservations] = await connection.query(
       `SELECT mr.*, 'manual' as reservation_type
-         FROM ManualReservation mr
+         FROM manualReservation mr
          WHERE mr.hotel_id = ?`,
       [req.admin.hotel_id]
     );
@@ -94,17 +94,15 @@ reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
       );
 
       const [userId] = await connection.query(
-        "SELECT user_id FROM reservation reservation_id = ? ",
+        "SELECT user_id FROM reservation where reservation_id = ? ",
         [reservationId]
       );
 
-      const [user] = await connection.query(
-        "SELECT email FROM users  WHERE user_id = ?",
-        [userId]
-      );
+      const user = userId[0].user_id;
 
       sendNotificationn(
         user,
+        "user",
         "Reservatiion Accepted",
         "Your reservation has been accepted proceed to payment"
       );
@@ -139,12 +137,10 @@ reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
           );
 
           // Notify the user that their reservation was deleted
-          const [user] = await connection.query(
-            "SELECT email FROM users WHERE user_id = ?",
-            [reservation[0].user_id]
-          );
+          const user = reservation[0].user_id;
           sendNotificationn(
             user,
+            "user",
             "RESERVATION DECLINE",
             "Your reservatYion was deleted because payment was not made on time"
           );
@@ -183,12 +179,10 @@ reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
 
         // Notify the user that their reservation was declined
 
-        const [user] = await connection.query(
-          "SELECT email FROM users  WHERE user_id = ?",
-          [reservation[0].user_id]
-        );
+        const user = reservation[0].user_id;
         sendNotificationn(
           user,
+          "user",
           "Reservation Decline",
           `Your reservation was declined: ${reason}`
         );
@@ -328,20 +322,17 @@ reservationRouter.post("/checkout", authenticateToken, async (req, res) => {
 
       // Free the room by setting the room as available
       await connection.query(
-        "UPDATE Rooms SET status = 'available' WHERE room_id = ?",
+        "UPDATE Rooms SET availability = 1 WHERE room_id = ?",
         [room_id]
       );
 
       // Send notification to the user
 
-      const [user] = await connection.query(
-        "SELECT email FROM users WHERE user_id = ?",
-        [resv.user_id]
-      );
+      const user = resv.user_id;
       sendNotificationn(
         user,
+        "user",
         "Reservation Checked Out",
-        req.admin.admin_id,
         "Your reservation has been checked out. We hope you enjoyed your stay! Please rate our service."
       );
     } else if (reservation_type === "manual") {

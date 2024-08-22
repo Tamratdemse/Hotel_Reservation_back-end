@@ -9,7 +9,7 @@ const { pool } = require("./configration/db");
 const users = require("./routes/user");
 const admins = require("./routes/admin");
 const superadmin = require("./routes/super_admin");
-const { sendNotificationn } = require("./utility/notification");
+const { sendNotificationn } = require("./utility/notificationSender");
 
 const app = express();
 const port = process.env.port;
@@ -20,8 +20,9 @@ app.use(cors());
 // Cron job to check for checkout dates every morning at 8:00 AM
 cron.schedule("00 08 * * *", async () => {
   console.log("trying cron");
+
   try {
-    const connection = await pool.getConnection();
+    const connection = pool.getConnection();
 
     // Get today's date
     const today = new Date();
@@ -33,28 +34,49 @@ cron.schedule("00 08 * * *", async () => {
       [today]
     );
 
-    for (const reservation of reservations) {
-      // Fetch admin_id using hotel_id
-      const [admin] = await connection.query(
-        "SELECT email FROM Admins WHERE hotel_id = ?",
-        [reservation.hotel_id]
-      );
+    const [manualReservations] = await connection.query(
+      "SELECT manual_reservation_id, hotel_id FROM manualreservation WHERE checkout_date = ?",
+      [today]
+    );
 
-      const [user] = await connection.query(
-        "SELECT email FROM users WHERE user_id = ?",
-        [reservation.user_id]
-      );
+    if (reservations) {
+      for (const reservation of reservations) {
+        // Fetch admin_id using hotel_id
+        const [admin] = await connection.query(
+          "SELECT Admin_id FROM Admins WHERE hotel_id = ?",
+          [reservation.hotel_id]
+        );
 
-      sendNotificationn(
-        admin,"Checkout Day",
-        `Today is the checkout day for reservation ID ${reservation.reservation_id}`
-      );
-      sendNotificationn(
-        user,"Checkout Day",
-        "Today is your checkout day. Please rate our service!"
-      );
+        const [user] = reservations.user_id;
+
+        sendNotificationn(
+          admin[0].Admin_id,
+          "admin",
+          "Checkout Day",
+          `Today is the checkout day for reservation ID ${reservation.reservation_id}`
+        );
+        sendNotificationn(
+          user,
+          "user",
+          "Checkout Day",
+          "Today is your checkout day. Please rate our service!"
+        );
+      }
     }
-
+    if (manualReservations) {
+      for (const manualReservation of manualReservations) {
+        const [admin] = await connection.query(
+          "SELECT Admin_id FROM Admins WHERE hotel_id = ?",
+          [manualReservation.hotel_id]
+        );
+        sendNotificationn(
+          admin[0].Admin_id,
+          "admin",
+          "Checkout Day",
+          `Today is the checkout day for reservation ID ${manualReservation.manual_reservation_id}`
+        );
+      }
+    }
     connection.release();
   } catch (error) {
     console.error("Error checking checkout dates:", error);
