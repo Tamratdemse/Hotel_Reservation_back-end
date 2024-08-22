@@ -8,7 +8,10 @@ const { userAuthenticate } = require("../utility/auth");
 const { calculateCheckoutDate } = require("../utility/utils");
 const pool = require("../configration/db");
 const { GenerateRoomNumber } = require("../utility/utils");
-const { sendNotificationn, subscribe } = require("../utility/notification");
+const {
+  sendNotificationn,
+  subscribe,
+} = require("../utility/notificationSender");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 // Endpoint to get number of users, hotels, and rooms
@@ -214,12 +217,13 @@ router.post("/reservation", userAuthenticate, async (req, res) => {
       [roomId]
     );
     const [admins] = await connection.query(
-      "SELECT email FROM Admins WHERE hotel_id = ?",
+      "SELECT Admin_id FROM Admins WHERE hotel_id = ?",
       [hotel_id]
     );
-    const admin = admins[0].email;
+    const admin = admins[0].Admin_id;
     sendNotificationn(
       admin,
+      "admin",
       "Reservation Request",
       "You have new reservation request please check the information and accept it"
     );
@@ -241,22 +245,19 @@ router.post("/reservation", userAuthenticate, async (req, res) => {
           reservation[0].hotel_id
         );
         await connection.query(
-          "UPDATE Rooms SET availability = 1 WHERE room_number = ?",
+          "UPDATE Rooms SET availability = 1 WHERE room_id = ?",
           [roomId]
         );
 
         // Create a notification for the user
-        const [user] = await connection.query(
-          "SELECT email FROM users WHERE user_id = ?",
-          [req.user.user_id]
-        );
+        const user = req.user.user_id;
         sendNotificationn(
           user,
+          "user",
           "RESERVATION DECLINE",
           "Your reservatYion was deleted because the admins can't respond please try again later"
         );
       }
-
       connection.release();
     }, 1800000); // 30 minutes in milliseconds
 
@@ -287,9 +288,13 @@ router.get("/notification", userAuthenticate, async (req, res) => {
   try {
     const connection = await pool.getConnection();
 
+    const [user] = await connection.query(
+      "SELECT email FROM users WHERE user_id = ? ",
+      [req.user.user_id]
+    );
     const [notifications] = await connection.query(
       "SELECT * FROM Notifications WHERE user_id = ? ",
-      [req.user.user_id]
+      [user[0].email]
     );
 
     connection.release();

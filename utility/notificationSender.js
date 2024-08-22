@@ -47,10 +47,36 @@ const subscribe = async (userId, subscription) => {
   }
 };
 
-const sendNotificationn = async (userId, title, message, url) => {
-  if (!userId || !message)
+const sendNotificationn = async (
+  user,
+  userType = "user",
+  title,
+  message,
+  url
+) => {
+
+  if (!user || !message)
     return { status: 400, message: "Id and message required" };
 
+  const connection = await pool.getConnection();
+
+  let userId;
+
+  if (userType == "admin") {
+    const [admins] = await connection.query(
+      "SELECT email FROM Admins WHERE Admin_id = ?",
+      [user]
+    );
+    userId = admins[0].email;
+  }
+
+  if (userType == "user") {
+    const [users] = await connection.query(
+      "SELECT email FROM users WHERE User_id = ?",
+      [user]
+    );
+    userId = users[0].email;
+  }
   try {
     const connection = await pool.getConnection();
     const [rows] = await connection.query(
