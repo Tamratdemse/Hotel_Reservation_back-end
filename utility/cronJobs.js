@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-const { pool } = require("../configration/db");
+const pool = require("../configration/db");
 const { sendNotificationn } = require("./notificationSender");
 const { GenerateRoomNumber } = require("./utils");
 
@@ -7,8 +7,8 @@ const scheduleCronJobs = () => {
   // Cron job to check for reservations pending for more than 30 minutes
   cron.schedule("*/5 * * * *", async () => {
     console.log("Running cron job to check pending reservations...");
-
     try {
+      // Properly await the connection object
       const connection = await pool.getConnection();
 
       // 1. Check for reservations pending for more than 30 minutes
