@@ -4,7 +4,10 @@ const reservationRouter = express.Router();
 const { authenticateToken } = require("../../utility/auth");
 const pool = require("../../configration/db");
 const { sendNotificationn } = require("../../utility/notificationSender");
-const { GenerateRoomNumber } = require("../../utility/utils");
+const {
+  GenerateRoomNumber,
+  calculateCheckoutDate,
+} = require("../../utility/utils");
 
 // Admin Get All Reservations
 reservationRouter.get("/", authenticateToken, async (req, res) => {
@@ -57,27 +60,27 @@ reservationRouter.get("/", authenticateToken, async (req, res) => {
 });
 
 // Admin Reservation Details
-reservationRouter.get("/:id", authenticateToken, async (req, res) => {
-  const reservationId = req.params.id;
+// reservationRouter.get("/:id", authenticateToken, async (req, res) => {
+//   const reservationId = req.params.id;
 
-  try {
-    const connection = await pool.getConnection();
+//   try {
+//     const connection = await pool.getConnection();
 
-    const [reservationDetails] = await connection.query(
-      `SELECT r.*, u.name, u.email, u.phone_number , u.id_card_photo_front  , u.id_card_photo_back 
-         FROM Reservation r
-         JOIN users u ON r.user_id = u.user_id
-         WHERE r.reservation_id = ?`,
-      [reservationId]
-    );
+//     const [reservationDetails] = await connection.query(
+//       `SELECT r.*, u.name, u.email, u.phone_number , u.id_card_photo_front  , u.id_card_photo_back 
+//          FROM Reservation r
+//          JOIN users u ON r.user_id = u.user_id
+//          WHERE r.reservation_id = ?`,
+//       [reservationId]
+//     );
 
-    connection.release();
-    res.json(reservationDetails[0]);
-  } catch (error) {
-    console.error("Error querying database:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+//     connection.release();
+//     res.json(reservationDetails[0]);
+//   } catch (error) {
+//     console.error("Error querying database:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
 
 // Admin Accept/Decline Reservation
 reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
@@ -183,7 +186,7 @@ reservationRouter.post(
 
       // Get the current reservation details
       const [reservation] = await connection.query(
-        `SELECT duration, total_price, room_number, hotel_id FROM ${tableName} WHERE reservation_id = ?`,
+        `SELECT duration, total_price, room_number, hotel_id,reservation_date FROM ${tableName} WHERE reservation_id = ?`,
         [reservationId]
       );
 
@@ -203,12 +206,13 @@ reservationRouter.post(
 
       // Calculate price for the extended days
       const [roomCategory] = await connection.query(
-        "SELECT category_price FROM Categories WHERE category_id = (SELECT category_id FROM Rooms WHERE room_number = ? AND hotel_id = ?)",
+        "SELECT price FROM Category WHERE category_id = (SELECT category_id FROM Rooms WHERE room_number = ? AND hotel_id = ?)",
         [room_number, hotel_id]
       );
 
-      const extendedPrice = roomCategory[0].category_price * daysToExtend;
-      const newTotalPrice = total_price + extendedPrice;
+      const extendedPrice =
+        Number(roomCategory[0].price) * Number(daysToExtend);
+      const newTotalPrice = Number(total_price) + Number(extendedPrice);
 
       // Update the reservation with new values
       await connection.query(
@@ -257,7 +261,7 @@ reservationRouter.post("/checkout", authenticateToken, async (req, res) => {
                             FROM ManualReservation mr
                             WHERE mr.reservation_id = ?`;
     }
-
+    
     const [reservation] = await connection.query(reservationQuery, [
       reservation_id,
     ]);

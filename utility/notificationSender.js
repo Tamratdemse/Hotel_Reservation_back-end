@@ -101,14 +101,11 @@ const sendNotificationn = async (
       url: url || "/", // Add the url to the payload, default to homepage if not provided
     });
 
-    console.log("Payload:", payload);
     for (let i = 0; i < rows.length; i++) {
       let subscription = {
         endpoint: rows[i].endpoint,
         keys: JSON.parse(rows[i].keyss),
       };
-
-      console.log("Retrieved Subscription:", subscription);
 
       if (!subscription.keys.auth || !subscription.keys.p256dh) {
         console.error(

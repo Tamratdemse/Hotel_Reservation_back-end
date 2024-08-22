@@ -157,7 +157,6 @@ router.post("/login", async (req, res) => {
 //route to return all user data related to their account
 router.get("/account_data", userAuthenticate, async (req, res) => {
   const userId = req.user.user_id;
-  console.log(userId);
 
   try {
     const connection = await pool.getConnection();
@@ -279,7 +278,6 @@ router.post("/reservation", userAuthenticate, async (req, res) => {
 
     const checkoutDate = calculateCheckoutDate(reservation_date, duration);
 
-    console.log(req.user);
     // Insert the reservation into the reservation table
     const [result] = await connection.query(
       "INSERT INTO Reservation (user_id, hotel_id, category_id, room_number, reservation_date, duration, total_price, checkout_date, reservation_status, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'unpaid')",

@@ -66,7 +66,7 @@ categoryRouter.post("/addcategory", authenticateToken, async (req, res) => {
 
 // Admin Delete Category
 categoryRouter.delete(
-  "deletecategory/:id",
+  "/deletecategory/:id",
   authenticateToken,
   async (req, res) => {
     const categoryId = req.params.id;

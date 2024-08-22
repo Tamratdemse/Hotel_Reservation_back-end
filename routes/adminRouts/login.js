@@ -12,7 +12,6 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 loginRouter.post("/", async (req, res) => {
   const { email, password, subscription } = req.body;
-  console.log(req.body);
 
   try {
     const connection = await pool.getConnection();
@@ -38,7 +37,7 @@ loginRouter.post("/", async (req, res) => {
     subscribe(email, subscription);
     const token = jwt.sign(
       {
-        admin_id: admin.Admin_id,
+        admin_id: admin.admin_id,
         name: admin.name,
         admin_type: admin.admin_type,
         hotel_id: admin.hotel_id,

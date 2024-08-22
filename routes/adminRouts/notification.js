@@ -9,7 +9,7 @@ notificationRouter.get("/", authenticateToken, async (req, res) => {
   try {
     const connection = await pool.getConnection();
     const [admin] = await connection.query(
-      "SELECT email FROM users WHERE user_id = ? ",
+      "SELECT email FROM admins WHERE admin_id = ? ",
       [req.admin.admin_id]
     );
     const [notifications] = await connection.query(
