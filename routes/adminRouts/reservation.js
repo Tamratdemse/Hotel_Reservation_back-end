@@ -106,46 +106,6 @@ reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
         "Reservatiion Accepted",
         "Your reservation has been accepted proceed to payment"
       );
-
-      // Schedule payment status check after 30 minutes
-      setTimeout(async () => {
-        const [reservation] = await connection.query(
-          "SELECT payment_status, room_number, category_id, hotel_id,user_id FROM Reservation WHERE reservation_id = ?",
-          [reservationId]
-        );
-
-        if (
-          reservation.length > 0 &&
-          reservation[0].payment_status === "unpaid"
-        ) {
-          const roomId = GenerateRoomNumber(
-            reservation[0].room_number,
-            reservation[0].category_id,
-            reservation[0].hotel_id
-          );
-
-          // Delete the reservation
-          await connection.query(
-            "DELETE FROM Reservation WHERE reservation_id = ?",
-            [reservationId]
-          );
-
-          // Free the reserved room
-          await connection.query(
-            "UPDATE Rooms SET availability = 1 WHERE room_id = ?",
-            [roomId]
-          );
-
-          // Notify the user that their reservation was deleted
-          const user = reservation[0].user_id;
-          sendNotificationn(
-            user,
-            "user",
-            "RESERVATION DECLINE",
-            "Your reservatYion was deleted because payment was not made on time"
-          );
-        }
-      }, 30 * 60 * 1000); // 30 minutes in milliseconds
     } else if (action === "decline") {
       if (!reason) {
         connection.release();

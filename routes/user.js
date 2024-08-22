@@ -227,40 +227,6 @@ router.post("/reservation", userAuthenticate, async (req, res) => {
       "Reservation Request",
       "You have new reservation request please check the information and accept it"
     );
-    // Schedule a job to check the reservation status after 30 minutes
-    setTimeout(async () => {
-      const [reservation] = await connection.query(
-        "SELECT * FROM Reservation WHERE id = ?",
-        [reservationId]
-      );
-
-      if (reservation[0].reservation_status === "pending") {
-        // Delete the reservation and free the room
-        await connection.query("DELETE FROM Reservation WHERE id = ?", [
-          reservationId,
-        ]);
-        const roomId = GenerateRoomNumber(
-          reservation[0].room_number,
-          reservation[0].category_id,
-          reservation[0].hotel_id
-        );
-        await connection.query(
-          "UPDATE Rooms SET availability = 1 WHERE room_id = ?",
-          [roomId]
-        );
-
-        // Create a notification for the user
-        const user = req.user.user_id;
-        sendNotificationn(
-          user,
-          "user",
-          "RESERVATION DECLINE",
-          "Your reservatYion was deleted because the admins can't respond please try again later"
-        );
-      }
-      connection.release();
-    }, 1800000); // 30 minutes in milliseconds
-
     res.status(201).json({ message: "Reservation created successfully" });
   } catch (error) {
     console.error("Error querying database:", error);
