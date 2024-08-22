@@ -14,7 +14,6 @@ const manualreservationRouter = require("./adminRouts/manualReservation");
 const roomsRouter = require("./adminRouts/room");
 const notificationRouter = require("./adminRouts/notification");
 
-
 router.use("/login", loginRouter);
 
 router.use("/reservation", reservationRouter);
