@@ -28,6 +28,8 @@ const subscribe = async (userId, subscription) => {
 
     if (rows.length > 0) {
       connection.release();
+      console.log("Subscription already exists.");
+
       return { status: 200, message: "Subscription already exists." };
     }
 
