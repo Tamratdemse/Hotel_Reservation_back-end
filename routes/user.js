@@ -115,6 +115,11 @@ router.post("/register", async (req, res) => {
   }
 });
 
+router.get("/try", async (req, res) => {
+  const hashedPassword = await bcrypt.hash("1234", 10);
+  console.log(hashedPassword);
+});
+
 router.post("/login", async (req, res) => {
   const { email, password, subscription } = req.body;
   console.log("chmchmta");
@@ -259,6 +264,7 @@ router.post("/rate-hotel", userAuthenticate, async (req, res) => {
 // Protected Reservation Endpoint
 router.post("/reservation", userAuthenticate, async (req, res) => {
   const { hotel_id, category_id, duration } = req.body;
+  console.log(req.body);
 
   try {
     const connection = await pool.getConnection();

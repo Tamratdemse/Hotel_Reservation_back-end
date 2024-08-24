@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
-  const token = authHeader;
+  const token = authHeader && authHeader.split(" ")[1]; // Extract token from "Bearer <token>"
 
   if (!token) {
     return res.status(401).json({ error: "Token not provided" });

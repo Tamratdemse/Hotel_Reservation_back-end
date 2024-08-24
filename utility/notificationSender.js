@@ -11,15 +11,14 @@ webPush.setVapidDetails(
   publicVapidKey,
   privateVapidKey
 );
+
 const subscribe = async (userId, subscription) => {
-  if (!userId || !subscription)
+  if (!userId || !subscription) {
     return { status: 400, message: "userId and subscription required" };
+  }
 
   try {
     const connection = await pool.getConnection();
-
-    // Log keys to verify their structure
-    console.log("Subscription Keys:", subscription.keys);
 
     // Check if the subscription already exists
     const [rows] = await connection.query(
@@ -29,17 +28,15 @@ const subscribe = async (userId, subscription) => {
 
     if (rows.length > 0) {
       connection.release();
-      console.log("Subscription already exists for user:", userId);
       return { status: 200, message: "Subscription already exists." };
     }
 
-    // If subscription does not exist, insert it into the database
+    // Insert subscription into the database
     await connection.query(
-      "INSERT INTO subscriptions (user_id, endpoint, `keyss`) VALUES (?, ?, ?)",
+      "INSERT INTO subscriptions (user_id, endpoint, keyss) VALUES (?, ?, ?)",
       [userId, subscription.endpoint, JSON.stringify(subscription.keys)]
     );
     connection.release();
-    console.log("Subscription saved for user:", userId);
     return { status: 201, message: "Subscription saved successfully." };
   } catch (error) {
     console.error("Error saving subscription:", error);
@@ -54,14 +51,15 @@ const sendNotificationn = async (
   message,
   url
 ) => {
-  if (!user || !message)
+  if (!user || !message) {
     return { status: 400, message: "Id and message required" };
-
-  const connection = await pool.getConnection();
+  }
 
   let userId;
 
-  if (userType == "admin") {
+  const connection = await pool.getConnection();
+
+  if (userType === "admin") {
     const [admins] = await connection.query(
       "SELECT email FROM Admins WHERE Admin_id = ?",
       [user]
@@ -69,26 +67,19 @@ const sendNotificationn = async (
     userId = admins[0].email;
   }
 
-  if (userType == "user") {
+  if (userType === "user") {
     const [users] = await connection.query(
       "SELECT email FROM users WHERE User_id = ?",
       [user]
     );
     userId = users[0].email;
   }
+
   try {
-    const connection = await pool.getConnection();
     const [rows] = await connection.query(
       "SELECT * FROM subscriptions WHERE user_id = ?",
       [userId]
     );
-
-    // Insert notification into the database
-    await connection.query(
-      "INSERT INTO Notifications (user_id, message) VALUES (?, ?)",
-      [userId, message]
-    );
-    connection.release();
 
     if (rows.length === 0) {
       return { status: 404, message: "Subscription not found for user." };
@@ -97,21 +88,14 @@ const sendNotificationn = async (
     const payload = JSON.stringify({
       title: title || "Notification",
       body: message,
-      url: url || "/", // Add the url to the payload, default to homepage if not provided
+      url: url || "/",
     });
 
-    for (let i = 0; i < rows.length; i++) {
-      let subscription = {
-        endpoint: rows[i].endpoint,
-        keys: JSON.parse(rows[i].keyss),
+    for (const row of rows) {
+      const subscription = {
+        endpoint: row.endpoint,
+        keys: JSON.parse(row.keyss),
       };
-
-      if (!subscription.keys.auth || !subscription.keys.p256dh) {
-        console.error(
-          "Missing required keys in subscription:",
-          subscription.keys
-        );
-      }
 
       try {
         await webPush.sendNotification(subscription, payload);
@@ -138,6 +122,8 @@ const sendNotificationn = async (
   } catch (error) {
     console.error("Error processing notification:", error);
     return { status: 500, message: "Failed to process notification." };
+  } finally {
+    connection.release();
   }
 };
 
