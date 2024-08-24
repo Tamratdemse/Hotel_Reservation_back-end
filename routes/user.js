@@ -59,6 +59,7 @@ router.get("/hotel/:id", async (req, res) => {
     const [results] = await connection.query(
       `SELECT 
           c.category_id, 
+          c.photo,
           c.category_name, 
           c.price,
           COUNT(r.room_number) AS total_rooms,
@@ -116,6 +117,20 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { email, password, subscription } = req.body;
+  console.log("chmchmta");
+  console.log(req.body);
+
+  let parsedSubscription = null;
+  if (subscription) {
+    try {
+      parsedSubscription = JSON.parse(subscription);
+      console.log("Subscription Keys:", parsedSubscription.keys);
+    } catch (error) {
+      console.error("Failed to parse subscription:", error);
+    }
+  } else {
+    console.log("No subscription provided");
+  }
 
   try {
     const connection = await pool.getConnection();
@@ -138,7 +153,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Invalid email or password" });
     }
 
-    subscribe(email, subscription);
+    subscribe(email, parsedSubscription);
 
     const token = jwt.sign(
       { id: user.user_id, name: user.name, user_type: user.user_type },
@@ -330,6 +345,23 @@ router.get("/status", userAuthenticate, async (req, res) => {
     );
     connection.release();
     res.json(reservations);
+  } catch (error) {
+    console.error("Error querying database:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+router.get("/top-hotels", async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+
+    const [hotels] = await connection.query(
+      "SELECT * FROM Hotel ORDER BY rating DESC LIMIT 3"
+    );
+
+    connection.release();
+
+    res.json(hotels);
   } catch (error) {
     console.error("Error querying database:", error);
     res.status(500).json({ error: "Internal Server Error" });

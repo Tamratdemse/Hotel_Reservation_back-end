@@ -3,8 +3,8 @@ const webPush = require("web-push");
 const pool = require("../configration/db");
 
 const publicVapidKey =
-  "BN_lZ5Dh27rnQJimb9Khu1iwOTeUAlIzspp182iqKVeHPx52Sy76ib38qjHAhWfLp0Hin1UumpThG3PM0otCsU0";
-const privateVapidKey = "y_AwFuBXhA7WFcYR2yP7k9kh2a0n68ggK3VqPmJfz6c";
+  "BL_VNDt5r9sIoVmjaxBOqD5Lpapo5NWE__vEIHW7zBlxl2n6YpRmym-f5DF7PohXR6cyVdI_dfyvfYkulkYca_Q";
+const privateVapidKey = "LJ_psMp_5HJhwExrDfw7xL5KAJbV0ireGjRd4z-s7L0";
 
 webPush.setVapidDetails(
   "mailto:test@example.com",
@@ -54,7 +54,6 @@ const sendNotificationn = async (
   message,
   url
 ) => {
-
   if (!user || !message)
     return { status: 400, message: "Id and message required" };
 
