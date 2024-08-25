@@ -14,12 +14,12 @@ const pool = mysql.createPool({
 router.get("/statistics", async (req, res) => {
   try {
     // Fetch hotel count
-    const countQuery = "SELECT COUNT(*) AS hotelCount FROM hotels";
+    const countQuery = "SELECT COUNT(*) AS hotelCount FROM hotel";
     const [countResults] = await pool.query(countQuery);
     const hotelCount = countResults[0].hotelCount;
 
     // Fetch all hotels
-    const hotelsQuery = "SELECT * FROM hotels";
+    const hotelsQuery = "SELECT * FROM hotel";
     const [hotelsResults] = await pool.query(hotelsQuery);
 
     // Return both hotel count and list of hotels
@@ -54,7 +54,7 @@ router.post("/add_hotels", async (req, res) => {
     // Fetch the newly added hotel details or we can update id and name of the hotel
     const hotelId = result.insertId;
     const [hotelDetails] = await pool.query(
-      "SELECT * FROM hotels WHERE hotel_id = ?",
+      "SELECT * FROM hotel WHERE hotel_id = ?",
       [hotelId]
     );
 
@@ -70,23 +70,23 @@ router.post("/add_hotels", async (req, res) => {
 
 // Endpoint to add an admin
 router.post("/add_admin", async (req, res) => {
-  const { hotel_id, admin_name, admin_type, phone_no, password } = req.body;
+  const { name, email, password, admin_type, hotel_id } = req.body;
 
   // Hash the password
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const query = `
-        INSERT INTO admins (hotel_id, admin_name, admin_type, phone_no, password)
+        INSERT INTO admins (name, email, password ,admin_type,hotel_id)
         VALUES (?, ?, ?, ?, ?)
     `;
 
   try {
     const [result] = await pool.query(query, [
-      hotel_id,
-      admin_name,
+      name,
+      email,
+      password,
       admin_type,
-      phone_no,
-      hashedPassword,
+      hotel_id,
     ]);
 
     res.status(201).json({

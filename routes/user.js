@@ -3,6 +3,8 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
+const request = require("request");
+const { Chapa } = require("chapa-nodejs");
 
 const { userAuthenticate } = require("../utility/auth");
 const { calculateCheckoutDate } = require("../utility/utils");
@@ -27,6 +29,11 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
+
+
+const chapa = new Chapa({
+  secretKey: "CHASECK_TEST-sv12zkwQ3MrWGvs6SsMUZRm8rV2ZPzRq",
+});
 
 // Endpoint to get number of users, hotels, and rooms
 router.get("/", async (req, res) => {
@@ -73,6 +80,7 @@ router.get("/hotel/:id", async (req, res) => {
     const [results] = await connection.query(
       `SELECT 
           c.category_id, 
+          c.photo,
           c.category_name, 
           c.price,
           COUNT(r.room_number) AS total_rooms,
@@ -130,10 +138,27 @@ router.post(
   }
 );
 
+router.get("/try", async (req, res) => {
+  const hashedPassword = await bcrypt.hash("1234", 10);
+  console.log(hashedPassword);
+});
+
 router.post("/login", async (req, res) => {
   const { email, password, subscription } = req.body;
   console.log(req.body);
   console.log(email);
+
+  let parsedSubscription = null;
+  if (subscription) {
+    try {
+      parsedSubscription = JSON.parse(subscription);
+      console.log("Subscription Keys:", parsedSubscription.keys);
+    } catch (error) {
+      console.error("Failed to parse subscription:", error);
+    }
+  } else {
+    console.log("No subscription provided");
+  }
 
   try {
     const connection = await pool.getConnection();
@@ -156,10 +181,10 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Invalid email or password" });
     }
 
-    subscribe(email, subscription);
+    subscribe(email, parsedSubscription);
 
     const token = jwt.sign(
-      { id: user.User_id, name: user.name, user_type: user.user_type },
+      { id: user.user_id, name: user.name, user_type: user.user_type },
       JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -175,6 +200,7 @@ router.post("/login", async (req, res) => {
 //route to return all user data related to their account
 router.get("/account_data", userAuthenticate, async (req, res) => {
   const userId = req.user.user_id;
+  console.log(userId);
 
   try {
     const connection = await pool.getConnection();
@@ -261,6 +287,7 @@ router.post("/rate-hotel", userAuthenticate, async (req, res) => {
 // Protected Reservation Endpoint
 router.post("/reservation", userAuthenticate, async (req, res) => {
   const { hotel_id, category_id, duration } = req.body;
+  console.log(req.body);
 
   try {
     const connection = await pool.getConnection();
@@ -353,6 +380,23 @@ router.get("/status", userAuthenticate, async (req, res) => {
   }
 });
 
+router.get("/top-hotels", async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+
+    const [hotels] = await connection.query(
+      "SELECT * FROM Hotel ORDER BY rating DESC LIMIT 3"
+    );
+
+    connection.release();
+
+    res.json(hotels);
+  } catch (error) {
+    console.error("Error querying database:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 router.get("/notification", userAuthenticate, async (req, res) => {
   try {
     const connection = await pool.getConnection();
@@ -374,4 +418,106 @@ router.get("/notification", userAuthenticate, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+// Endpoint to initialize a split payment
+router.get("/initialize", async (req, res) => {
+  try {
+    const tx_ref = await chapa.generateTransactionReference();
+    const payload = {
+      amount: 10,
+      currency: "ETB",
+      email: req.query.email,
+      first_name: req.query.first_name,
+      last_name: req.query.last_name,
+      tx_ref: tx_ref,
+      callback_url: "http://www.google.com",
+      return_url: "http://www.chelsea.com",
+      customization: {
+        title: "Test Title",
+        description: "Test Description",
+      },
+      subaccounts: {
+        id: "5e51f65b-9ea9-4a2c-96dc-e8298a074197",
+      },
+    };
+
+    console.log("Request Payload:", payload);
+
+    const options = {
+      method: "POST",
+      url: "https://api.chapa.co/v1/transaction/initialize",
+      headers: {
+        Authorization: "Bearer CHASECK_TEST-sv12zkwQ3MrWGvs6SsMUZRm8rV2ZPzRq",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    };
+
+    request(options, (error, response) => {
+      if (error) {
+        console.error("Request Error:", error.message);
+        return res.status(500).json({ error: error.message });
+      }
+
+      const data = JSON.parse(response.body);
+      console.log("Response Data:", data);
+
+      if (data.status === "failed" || !data.data || !data.data.checkout_url) {
+        return res.status(400).json({
+          error:
+            data.message && data.message["subaccounts.id"]
+              ? data.message["subaccounts.id"][0]
+              : "Failed to initialize transaction.",
+          response: data,
+        });
+      }
+
+      res.redirect(data.data.checkout_url);
+    });
+  } catch (error) {
+    console.error("Initialization Error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+/*-callback_url=
+  Function that runs when payment is successful. This should
+   ideally be a script that uses the verify endpoint
+   on the Chapa API to check the status of the transaction.
+
+ -return_url=
+   Web address to redirect the user after payment is successful
+   */
+
+// Endpoint to handle the return from Chapa
+router.get("/payment-complete", async (req, res) => {
+  const { tx_ref, status } = req.query;
+  console.log(
+    `Payment complete. Transaction reference: ${tx_ref}, Status: ${status}`
+  );
+
+  // Verify the payment
+  try {
+    const response = await chapa.verify({ tx_ref });
+    console.log(
+      "Payment Verification Details:",
+      JSON.stringify(response.data, null, 2)
+    );
+    res.send(
+      `Payment complete! Transaction reference: ${tx_ref}, Status: ${status}, Verification: ${JSON.stringify(
+        response.data,
+        null,
+        2
+      )}`
+    );
+  } catch (error) {
+    console.error("Verification Error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint for callback from Chapa
+router.get("/callback", (req, res) => {
+  const { tx_ref, status } = req.query;
+  res.status(200).send("OK");
+});
+
 module.exports = router;

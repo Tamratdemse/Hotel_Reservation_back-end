@@ -67,7 +67,7 @@ reservationRouter.get("/", authenticateToken, async (req, res) => {
 //     const connection = await pool.getConnection();
 
 //     const [reservationDetails] = await connection.query(
-//       `SELECT r.*, u.name, u.email, u.phone_number , u.id_card_photo_front  , u.id_card_photo_back 
+//       `SELECT r.*, u.name, u.email, u.phone_number , u.id_card_photo_front  , u.id_card_photo_back
 //          FROM Reservation r
 //          JOIN users u ON r.user_id = u.user_id
 //          WHERE r.reservation_id = ?`,
@@ -97,17 +97,17 @@ reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
       );
 
       const [userId] = await connection.query(
-        "SELECT user_id FROM reservation where reservation_id = ? ",
+        "SELECT user_id FROM Reservation WHERE reservation_id = ?",
         [reservationId]
       );
 
       const user = userId[0].user_id;
 
-      sendNotificationn(
+      await sendNotificationn(
         user,
         "user",
-        "Reservatiion Accepted",
-        "Your reservation has been accepted proceed to payment"
+        "Reservation Accepted",
+        "Your reservation has been accepted. Proceed to payment."
       );
     } else if (action === "decline") {
       if (!reason) {
@@ -118,7 +118,7 @@ reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
       }
 
       const [reservation] = await connection.query(
-        "SELECT room_number, category_id, hotel_id,user_id FROM Reservation WHERE reservation_id = ?",
+        "SELECT room_number, category_id, hotel_id, user_id FROM Reservation WHERE reservation_id = ?",
         [reservationId]
       );
 
@@ -141,12 +141,11 @@ reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
         );
 
         // Notify the user that their reservation was declined
-
         const user = reservation[0].user_id;
-        sendNotificationn(
+        await sendNotificationn(
           user,
           "user",
-          "Reservation Decline",
+          "Reservation Declined",
           `Your reservation was declined: ${reason}`
         );
       }
@@ -261,7 +260,7 @@ reservationRouter.post("/checkout", authenticateToken, async (req, res) => {
                             FROM ManualReservation mr
                             WHERE mr.reservation_id = ?`;
     }
-    
+
     const [reservation] = await connection.query(reservationQuery, [
       reservation_id,
     ]);
