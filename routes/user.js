@@ -2,10 +2,10 @@ require("dotenv").config();
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
 const request = require("request");
 const { Chapa } = require("chapa-nodejs");
 
-const router = express.Router();
 const { userAuthenticate } = require("../utility/auth");
 const { calculateCheckoutDate } = require("../utility/utils");
 const pool = require("../configration/db");
@@ -16,6 +16,20 @@ const {
 } = require("../utility/notificationSender");
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const router = express.Router();
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // Folder where files will be saved
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname); // Naming the file with a timestamp to avoid conflicts
+  },
+});
+
+const upload = multer({ storage: storage });
+
 
 const chapa = new Chapa({
   secretKey: "CHASECK_TEST-sv12zkwQ3MrWGvs6SsMUZRm8rV2ZPzRq",
@@ -85,42 +99,44 @@ router.get("/hotel/:id", async (req, res) => {
   }
 });
 
-router.post("/register", async (req, res) => {
-  const { name, email, phone_number, id_card_front, id_card_back, password } =
-    req.body;
+// Endpoint for user registration with file uploads
+router.post(
+  "/register",
+  upload.fields([
+    { name: "id_card_front", maxCount: 1 },
+    { name: "id_card_back", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    const { name, email, phone_number, password } = req.body;
+    const id_card_front = req.files["id_card_front"]
+      ? req.files["id_card_front"][0].path
+      : null;
+    const id_card_back = req.files["id_card_back"]
+      ? req.files["id_card_back"][0].path
+      : null;
 
-  try {
-    const connection = await pool.getConnection();
+    try {
+      const [existingUser] = await pool.query(
+        "SELECT * FROM users WHERE email = ?",
+        [email]
+      );
+      if (existingUser.length > 0) {
+        return res.status(400).json({ message: "User already exists" });
+      }
 
-    // Check if the user already exists
-    const [existingUser] = await connection.query(
-      "SELECT * FROM users WHERE email = ?",
-      [email]
-    );
-    if (existingUser.length > 0) {
-      connection.release();
-      return res.status(400).json({ error: "User already exists" });
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const [result] = await pool.query(
+        "INSERT INTO users (name, email, phone_number, password, id_card_photo_front, id_card_photo_back) VALUES (?, ?, ?, ?, ?, ?)",
+        [name, email, phone_number, hashedPassword, id_card_front, id_card_back]
+      );
+
+      res.status(201).json({ message: "User registered successfully" });
+    } catch (error) {
+      console.error("Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
     }
-
-    // Hash the password before saving
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Insert the new user into the database
-    const [result] = await connection.query(
-      "INSERT INTO users (name, email, phone_number, id_card_photo_front, id_card_photo_back, password, user_type) VALUES (?, ?, ?, ?, ?, ?, 'user')",
-      [name, email, phone_number, id_card_front, id_card_back, hashedPassword]
-    );
-
-    const newUserId = result.insertId;
-    // Create a JWT token
-
-    connection.release();
-    res.status(201).json("Rgisterd successfuly");
-  } catch (error) {
-    console.error("Error querying database:", error);
-    res.status(500).json({ error: "Internal Server Error" });
   }
-});
+);
 
 router.get("/try", async (req, res) => {
   const hashedPassword = await bcrypt.hash("1234", 10);
@@ -129,6 +145,8 @@ router.get("/try", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { email, password, subscription } = req.body;
+  console.log(req.body);
+  console.log(email);
 
   let parsedSubscription = null;
   if (subscription) {
