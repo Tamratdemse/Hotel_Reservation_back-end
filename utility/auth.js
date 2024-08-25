@@ -54,7 +54,6 @@ const userAuthenticate = (req, res, next) => {
       name: decoded.name,
       user_type: decoded.user_type,
     };
-    console.log(req.user);
 
     // Proceed to the next middleware or route handler
     next();
