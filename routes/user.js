@@ -423,15 +423,43 @@ router.get("/notification", userAuthenticate, async (req, res) => {
   }
 });
 // Endpoint to initialize a split payment
-router.get("/initialize", async (req, res) => {
+router.get("/initialize", userAuthenticate, async (req, res) => {
+  const first_name = req.user.name;
+  const { amount, hotel_id } = req.query;
+
   try {
+    // Get a connection from the pool
+    const connection = await pool.getConnection();
+
+    // Query to get the subaccount_id from the hotel table
+    const [hotel] = await connection.query(
+      "SELECT subaccount_id FROM hotel WHERE hotel_id = ?",
+      [hotel_id]
+    );
+
+    // Release the connection back to the pool
+    connection.release();
+
+    // Check if subaccount_id was found
+    if (hotel.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Hotel not found or no subaccount_id associated." });
+    }
+
+    const subaccount_id = hotel[0].subaccount_id;
+    console.log("Subaccount ID:", subaccount_id);
+
+    // Generate transaction reference
     const tx_ref = await chapa.generateTransactionReference();
+
+    // Create payment payload
     const payload = {
-      amount: 10,
+      amount: amount,
       currency: "ETB",
-      email: req.query.email,
-      first_name: req.query.first_name,
-      last_name: req.query.last_name,
+      email: "",
+      first_name: first_name,
+      last_name: "",
       tx_ref: tx_ref,
       callback_url: "http://www.google.com",
       return_url: "http://www.chelsea.com",
@@ -440,12 +468,13 @@ router.get("/initialize", async (req, res) => {
         description: "Test Description",
       },
       subaccounts: {
-        id: "5e51f65b-9ea9-4a2c-96dc-e8298a074197",
+        id: subaccount_id, // Use the fetched subaccount_id
       },
     };
 
     console.log("Request Payload:", payload);
 
+    // Setup request options for Chapa API
     const options = {
       method: "POST",
       url: "https://api.chapa.co/v1/transaction/initialize",
@@ -456,6 +485,7 @@ router.get("/initialize", async (req, res) => {
       body: JSON.stringify(payload),
     };
 
+    // Send request to Chapa API
     request(options, (error, response) => {
       if (error) {
         console.error("Request Error:", error.message);
@@ -475,13 +505,17 @@ router.get("/initialize", async (req, res) => {
         });
       }
 
-      res.redirect(data.data.checkout_url);
+      // Return the checkout_url in the response
+      res.status(200).json({ checkout_url: data.data.checkout_url });
     });
   } catch (error) {
-    console.error("Initialization Error:", error.message);
-    res.status(500).json({ error: error.message });
+    console.error("Error:", error.message);
+    res
+      .status(500)
+      .json({ error: "An error occurred while processing your request." });
   }
 });
+
 /*-callback_url=
   Function that runs when payment is successful. This should
    ideally be a script that uses the verify endpoint
