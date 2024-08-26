@@ -5,6 +5,8 @@ const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const request = require("request");
 const { Chapa } = require("chapa-nodejs");
+const fs = require("fs");
+const path = require("path");
 
 const { userAuthenticate } = require("../utility/auth");
 const { calculateCheckoutDate } = require("../utility/utils");
@@ -29,7 +31,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
-
 
 const chapa = new Chapa({
   secretKey: "CHASECK_TEST-sv12zkwQ3MrWGvs6SsMUZRm8rV2ZPzRq",
@@ -225,44 +226,85 @@ router.get("/account_data", userAuthenticate, async (req, res) => {
 
 //update account info ,,, idialy update the specific data, but actually all datas
 
-router.put("/account_update", userAuthenticate, async (req, res) => {
-  const userId = req.user.user_id; // Get the user_id from the token payload
-  const { name, email, phone_number, id_card_front, id_card_back, password } =
-    req.body;
+router.put(
+  "/account_update",
+  userAuthenticate,
+  upload.fields([
+    { name: "id_card_front", maxCount: 1 },
+    { name: "id_card_back", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    const userId = req.user.user_id;
+    const { name, email, phone_number, password } = req.body;
 
-  try {
-    const connection = await pool.getConnection();
+    let id_card_front = req.files["id_card_front"]
+      ? req.files["id_card_front"][0].path
+      : null;
+    let id_card_back = req.files["id_card_back"]
+      ? req.files["id_card_back"][0].path
+      : null;
 
-    // Update the password if it's provided
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await connection.query(
-        "UPDATE users SET password = ? WHERE User_id = ?",
-        [hashedPassword, userId]
+    try {
+      const connection = await pool.getConnection();
+
+      // Get current user data
+      const [currentUser] = await connection.query(
+        "SELECT id_card_photo_front, id_card_photo_back FROM users WHERE user_id = ?",
+        [userId]
       );
+
+      const uploadsPath = path.resolve(__dirname, "../uploads");
+
+      // Delete old photos if new ones are uploaded
+      if (id_card_front && currentUser[0].id_card_photo_front) {
+        fs.unlink(path.join("", currentUser[0].id_card_photo_front), (err) => {
+          if (err) console.error("Error deleting old front photo:", err);
+        });
+      }
+
+      if (id_card_back && currentUser[0].id_card_photo_back) {
+        fs.unlink(path.join("", currentUser[0].id_card_photo_back), (err) => {
+          if (err) console.error("Error deleting old back photo:", err);
+        });
+      }
+
+      // Update the password if provided
+      if (password) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await connection.query(
+          "UPDATE users SET password = ? WHERE user_id = ?",
+          [hashedPassword, userId]
+        );
+      }
+
+      // Update user data
+      const [result] = await connection.query(
+        "UPDATE users SET name = ?, email = ?, phone_number = ?, id_card_photo_front = ?, id_card_photo_back = ? WHERE user_id = ?",
+        [
+          name,
+          email,
+          phone_number,
+          id_card_front || currentUser[0].id_card_photo_front,
+          id_card_back || currentUser[0].id_card_photo_back,
+          userId,
+        ]
+      );
+
+      connection.release();
+
+      if (result.affectedRows === 0) {
+        return res
+          .status(404)
+          .json({ error: "User not found or no changes made" });
+      }
+
+      res.json({ message: "Account updated successfully" });
+    } catch (error) {
+      console.error("Error updating database:", error);
+      res.status(500).json({ error: "Internal Server Error" });
     }
-
-    // Update other fields
-    const [result] = await connection.query(
-      "UPDATE users SET name = ?, email = ?, phone_number = ?, id_card_photo_front = ?, id_card_photo_back = ? WHERE User_id = ?",
-      [name, email, phone_number, id_card_front, id_card_back, userId]
-    );
-
-    connection.release();
-
-    if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({ error: "User not found or no changes made" });
-    }
-
-    res.json({ message: "Account updated successfully" });
-  } catch (error) {
-    console.error("Error updating database:", error);
-    res.status(500).json({ error: "Internal Server Error" });
   }
-});
-
+);
 router.post("/rate-hotel", userAuthenticate, async (req, res) => {
   const { hotel_id, rating, user_id } = req.body;
 
@@ -421,7 +463,8 @@ router.get("/notification", userAuthenticate, async (req, res) => {
 // Endpoint to initialize a split payment
 router.get("/initialize", userAuthenticate, async (req, res) => {
   const first_name = req.user.name;
-  const { amount, hotel_id } = req.query;
+  const { total_price, hotel_id } = req.query;
+  console.log(req.query);
 
   try {
     // Get a connection from the pool
@@ -451,7 +494,7 @@ router.get("/initialize", userAuthenticate, async (req, res) => {
 
     // Create payment payload
     const payload = {
-      amount: amount,
+      amount: total_price,
       currency: "ETB",
       email: "",
       first_name: first_name,

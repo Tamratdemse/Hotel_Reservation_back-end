@@ -3,8 +3,8 @@ const webPush = require("web-push");
 const pool = require("../configration/db");
 
 const publicVapidKey =
-  "BL_VNDt5r9sIoVmjaxBOqD5Lpapo5NWE__vEIHW7zBlxl2n6YpRmym-f5DF7PohXR6cyVdI_dfyvfYkulkYca_Q";
-const privateVapidKey = "LJ_psMp_5HJhwExrDfw7xL5KAJbV0ireGjRd4z-s7L0";
+  "BIhj2zEAAFg6PBWWA54Zu_c3gmDsm-p5U_0fPUI22hK3QLb03BAR-FatR2sI5u2OqVeuEshruPDE_PXJ6Nrlr_8";
+const privateVapidKey = "xu_3j6Q-L2dIjmkP2hlRT9gEC_BM3OJbcLQmir_YFcs";
 
 webPush.setVapidDetails(
   "mailto:test@example.com",
