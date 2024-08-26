@@ -4,6 +4,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const request = require("request");
+const fs = require("fs");
+const path = require("path");
 const { Chapa } = require("chapa-nodejs");
 const fs = require("fs");
 const path = require("path");
@@ -108,6 +110,7 @@ router.post(
     { name: "id_card_back", maxCount: 1 },
   ]),
   async (req, res) => {
+    console.log(req.body);
     const { name, email, phone_number, password } = req.body;
     const id_card_front = req.files["id_card_front"]
       ? req.files["id_card_front"][0].path
@@ -122,6 +125,10 @@ router.post(
         [email]
       );
       if (existingUser.length > 0) {
+        // Delete the uploaded files if the user already exists
+        if (id_card_front) fs.unlinkSync(path.resolve(id_card_front));
+        if (id_card_back) fs.unlinkSync(path.resolve(id_card_back));
+
         return res.status(400).json({ message: "User already exists" });
       }
 
@@ -134,26 +141,24 @@ router.post(
       res.status(201).json({ message: "User registered successfully" });
     } catch (error) {
       console.error("Error:", error);
+
+      // Delete the uploaded files in case of any error
+      if (id_card_front) fs.unlinkSync(path.resolve(id_card_front));
+      if (id_card_back) fs.unlinkSync(path.resolve(id_card_back));
+
       res.status(500).json({ message: "Internal Server Error" });
     }
   }
 );
 
-router.get("/try", async (req, res) => {
-  const hashedPassword = await bcrypt.hash("1234", 10);
-  console.log(hashedPassword);
-});
 
 router.post("/login", async (req, res) => {
   const { email, password, subscription } = req.body;
-  console.log(req.body);
-  console.log(email);
 
   let parsedSubscription = null;
   if (subscription) {
     try {
       parsedSubscription = JSON.parse(subscription);
-      console.log("Subscription Keys:", parsedSubscription.keys);
     } catch (error) {
       console.error("Failed to parse subscription:", error);
     }
