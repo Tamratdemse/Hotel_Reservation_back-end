@@ -124,8 +124,14 @@ router.post(
       );
       if (existingUser.length > 0) {
         // Delete the uploaded files if the user already exists
-        if (id_card_front) fs.unlinkSync(path.resolve(id_card_front));
-        if (id_card_back) fs.unlinkSync(path.resolve(id_card_back));
+        try {
+          if (id_card_front)
+            fs.unlinkSync(path.resolve(__dirname, "uploads", id_card_front));
+          if (id_card_back)
+            fs.unlinkSync(path.resolve(__dirname, "uploads", id_card_back));
+        } catch (err) {
+          console.error(`Failed to delete files:`, err);
+        }
 
         return res.status(400).json({ message: "User already exists" });
       }
@@ -141,14 +147,19 @@ router.post(
       console.error("Error:", error);
 
       // Delete the uploaded files in case of any error
-      if (id_card_front) fs.unlinkSync(path.resolve(id_card_front));
-      if (id_card_back) fs.unlinkSync(path.resolve(id_card_back));
+      try {
+        if (id_card_front)
+          fs.unlinkSync(path.resolve(__dirname, "uploads", id_card_front));
+        if (id_card_back)
+          fs.unlinkSync(path.resolve(__dirname, "uploads", id_card_back));
+      } catch (err) {
+        console.error(`Failed to delete files:`, err);
+      }
 
       res.status(500).json({ message: "Internal Server Error" });
     }
   }
 );
-
 router.post("/login", async (req, res) => {
   const { email, password, subscription } = req.body;
 
