@@ -43,7 +43,7 @@ loginRouter.post("/", async (req, res) => {
         hotel_id: admin.hotel_id,
       },
       JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "10h" }
     );
     connection.release();
     res.json({ token });

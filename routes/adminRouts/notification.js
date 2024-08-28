@@ -18,6 +18,7 @@ notificationRouter.get("/", authenticateToken, async (req, res) => {
     );
 
     connection.release();
+    console.log(notifications);
 
     res.status(200).json({ notifications });
   } catch (error) {

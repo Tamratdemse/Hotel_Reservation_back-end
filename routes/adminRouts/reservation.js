@@ -18,7 +18,7 @@ reservationRouter.get("/", authenticateToken, async (req, res) => {
       `SELECT r.*, u.name as user_name, u.email, u.phone_number, u.id_card_photo_front, u.id_card_photo_back
          FROM Reservation r
          JOIN users u ON r.user_id = u.user_id
-         WHERE r.hotel_id = ?`,
+         WHERE r.hotel_id = ? `,
       [req.admin.hotel_id]
     );
 
@@ -60,30 +60,31 @@ reservationRouter.get("/", authenticateToken, async (req, res) => {
 });
 
 // Admin Reservation Details
-// reservationRouter.get("/:id", authenticateToken, async (req, res) => {
-//   const reservationId = req.params.id;
+reservationRouter.get("/:id", authenticateToken, async (req, res) => {
+  const reservationId = req.params.id;
+  try {
+    const connection = await pool.getConnection();
 
-//   try {
-//     const connection = await pool.getConnection();
+    const [reservationDetails] = await connection.query(
+      `SELECT r.*, u.name, u.email, u.phone_number , u.id_card_photo_front  , u.id_card_photo_back
+         FROM Reservation r
+         JOIN users u ON r.user_id = u.user_id
+         WHERE r.reservation_id = ?`,
+      [reservationId]
+    );
 
-//     const [reservationDetails] = await connection.query(
-//       `SELECT r.*, u.name, u.email, u.phone_number , u.id_card_photo_front  , u.id_card_photo_back
-//          FROM Reservation r
-//          JOIN users u ON r.user_id = u.user_id
-//          WHERE r.reservation_id = ?`,
-//       [reservationId]
-//     );
-
-//     connection.release();
-//     res.json(reservationDetails[0]);
-//   } catch (error) {
-//     console.error("Error querying database:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
+    connection.release();
+    console.log(reservationDetails);
+    res.json(reservationDetails[0]);
+  } catch (error) {
+    console.error("Error querying database:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 // Admin Accept/Decline Reservation
 reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
+  console.log("see");
   const reservationId = req.params.id;
   const { action, reason } = req.body;
 
@@ -96,8 +97,9 @@ reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
         [reservationId]
       );
 
+      console.log(reservationId);
       const [userId] = await connection.query(
-        "SELECT user_id FROM Reservation WHERE reservation_id = ?",
+        "SELECT user_id FROM reservation WHERE reservation_id = ?",
         [reservationId]
       );
 
@@ -116,12 +118,13 @@ reservationRouter.post("/:id/action", authenticateToken, async (req, res) => {
           .status(400)
           .json({ error: "Reason for decline is required" });
       }
+      console.log("decline");
 
       const [reservation] = await connection.query(
         "SELECT room_number, category_id, hotel_id, user_id FROM Reservation WHERE reservation_id = ?",
         [reservationId]
       );
-
+      console.log(reservationId);
       if (reservation.length > 0) {
         const roomId = GenerateRoomNumber(
           reservation[0].room_number,

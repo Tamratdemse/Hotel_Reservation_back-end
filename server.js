@@ -16,8 +16,11 @@ const port = process.env.port;
 app.use(bodyParser.json());
 app.use(cors());
 
+// Serve static files
+app.use("/uploads", express.static("uploads"));
+
 // Start the cron jobs
-scheduleCronJobs();
+// scheduleCronJobs();
 
 app.use("/user", users);
 app.use("/admin", admins);

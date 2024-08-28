@@ -7,8 +7,6 @@ const request = require("request");
 const fs = require("fs");
 const path = require("path");
 const { Chapa } = require("chapa-nodejs");
-const fs = require("fs");
-const path = require("path");
 
 const { userAuthenticate } = require("../utility/auth");
 const { calculateCheckoutDate } = require("../utility/utils");
@@ -113,10 +111,10 @@ router.post(
     console.log(req.body);
     const { name, email, phone_number, password } = req.body;
     const id_card_front = req.files["id_card_front"]
-      ? req.files["id_card_front"][0].path
+      ? req.files["id_card_front"][0].filename
       : null;
     const id_card_back = req.files["id_card_back"]
-      ? req.files["id_card_back"][0].path
+      ? req.files["id_card_back"][0].filename
       : null;
 
     try {
@@ -150,7 +148,6 @@ router.post(
     }
   }
 );
-
 
 router.post("/login", async (req, res) => {
   const { email, password, subscription } = req.body;
