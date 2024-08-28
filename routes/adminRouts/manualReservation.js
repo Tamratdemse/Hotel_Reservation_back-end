@@ -50,7 +50,7 @@ manualreservationRouter.post(
       const reservationDate = new Date();
       const checkoutDate = calculateCheckoutDate(reservationDate, duration);
       await connection.query(
-        "INSERT INTO ManualReservation (name, phone_number, category_id, hotel_id, room_number, duration,reservation_date, checkout_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO ManualReservation (user_name, phone_number, category_id, hotel_id, room_number, duration,reservation_date, checkout_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [
           name,
           phone_number,
