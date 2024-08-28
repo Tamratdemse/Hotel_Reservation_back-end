@@ -276,9 +276,12 @@ reservationRouter.post("/checkout", authenticateToken, async (req, res) => {
     const resv = reservation[0];
     const room_id = GenerateRoomNumber(
       resv.room_number,
-      resv.cat_id,
+      resv.category_id,
       resv.hotel_id
     );
+
+    console.log(room_id);
+
     if (reservation_type === "online") {
       // Update the reservation status to checked out
       await connection.query(
@@ -310,7 +313,7 @@ reservationRouter.post("/checkout", authenticateToken, async (req, res) => {
 
       // Free the room by setting the room as available
       await connection.query(
-        "UPDATE Rooms SET status = 'available' WHERE room_id = ?",
+        "UPDATE Rooms SET availability = 1 WHERE room_id = ?",
         [room_id]
       );
     }

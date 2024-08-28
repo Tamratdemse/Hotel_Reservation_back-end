@@ -9,6 +9,7 @@ const pool = require("../../configration/db");
 
 // Admin Get All Rooms
 roomsRouter.get("/", authenticateToken, async (req, res) => {
+
   try {
     const connection = await pool.getConnection();
 

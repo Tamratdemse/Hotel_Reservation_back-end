@@ -2,67 +2,114 @@ require("dotenv").config();
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-
+const multer = require("multer");
+const path = require("path");
 const categoryRouter = express.Router();
 const { authenticateToken } = require("../../utility/auth");
 const pool = require("../../configration/db");
 const { GenerateRoomNumber } = require("../../utility/utils");
+const { log } = require("console");
 
-//Admin Get All categories
+// Set up multer for handling file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "hotel_image/"); // Ensure this directory exists
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage: storage });
+
 categoryRouter.get("/", authenticateToken, async (req, res) => {
+  console.log(req.admin);
+  console.log(req.admin.hotel_id);
+
   try {
     const connection = await pool.getConnection();
-
-    const [categories] = await connection.query(
-      "SELECT * FROM Category WHERE hotel_id = ?",
-      [req.admin.hotel_id]
-    );
-
+    const query = `
+      SELECT category.*, 
+             COUNT(Rooms.room_id) AS total_rooms,
+             SUM(CASE WHEN Rooms.availability = 'Available' THEN 1 ELSE 0 END) AS available_rooms
+      FROM category
+      LEFT JOIN Rooms ON category.category_id = Rooms.category_id
+      WHERE category.hotel_id = ?
+      GROUP BY category.category_id;
+    `;
+    const [rows] = await connection.query(query, [req.admin.hotel_id]);
     connection.release();
-    res.status(200).json(categories);
-  } catch (error) {
-    console.error("Error fetching categories:", error);
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching categories:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// Admin Add Category
-categoryRouter.post("/addcategory", authenticateToken, async (req, res) => {
-  const { name, price, description, rooms } = req.body;
+// Admin Add Category with Image
+// Admin Add Category with Image
+categoryRouter.post(
+  "/addcategory",
+  upload.single("photo"),
+  authenticateToken,
+  async (req, res) => {
+    const { category_name, price, description, rooms } = req.body;
+    const photo = req.file ? req.file.filename : null;
+    const hotel_id = req.admin.hotel_id; // Get the hotel_id from the authenticated admin
 
-  try {
-    const connection = await pool.getConnection();
+    console.log(hotel_id);
+    console.log(req.body);
+    console.log(req.admin);
 
-    // Insert the new category into the Category table
-    const [categoryResult] = await connection.query(
-      "INSERT INTO Category (category_name, price,description, hotel_id) VALUES (?, ?,?, ?)",
-      [name, price, description, req.admin.hotel_id]
-    );
+    try {
+      const connection = await pool.getConnection();
+      await connection.beginTransaction();
 
-    const categoryId = categoryResult.insertId;
+      // Insert the new category into the category table
+      const insertCategoryQuery = `
+        INSERT INTO category (category_name, price, hotel_id, description, photo)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      const [categoryResult] = await connection.query(insertCategoryQuery, [
+        category_name,
+        price,
+        hotel_id,
+        description,
+        photo,
+      ]);
 
-    // Insert rooms into the Rooms table
+      const categoryId = categoryResult.insertId;
+      const roomNumbers = rooms.split(",").map((room) => room.trim());
 
-    const roomValues = rooms.map((roomNumber) => [
-      (roomId = GenerateRoomNumber(roomNumber, categoryId, req.admin.hotel_id)),
-      roomNumber,
-      categoryId,
-      req.admin.hotel_id,
-      1,
-    ]);
+      // Insert each room into the rooms table with a concatenated primary key
+      const insertRoomQuery = `
+        INSERT INTO rooms (room_id, room_number, category_id, hotel_id, availability)
+        VALUES (?, ?, ?, ?, '1')
+      `;
 
-    await connection.query(
-      "INSERT INTO Rooms (room_id ,room_number, category_id, hotel_id, availability) VALUES ?",
-      [roomValues]
-    );
+      for (const roomNumber of roomNumbers) {
+        // Generate the primary key by concatenating hotel_id, room_number, and category_id
+        const roomId = `${hotel_id}-${roomNumber}-${categoryId}`;
+        await connection.query(insertRoomQuery, [
+          roomId,
+          roomNumber,
+          categoryId,
+          hotel_id,
+        ]);
+      }
 
-    connection.release();
-    res.status(200).json({ message: "Category and rooms added successfully" });
-  } catch (error) {
-    console.error("Error adding category and rooms:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+      await connection.commit();
+      connection.release();
+
+      res
+        .status(201)
+        .json({ message: "Category and rooms added successfully" });
+    } catch (err) {
+      console.error("Error adding category:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
   }
-});
+);
 
 // Admin Delete Category
 categoryRouter.delete(
