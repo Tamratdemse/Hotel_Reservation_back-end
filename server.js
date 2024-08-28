@@ -11,10 +11,13 @@ const superadmin = require("./routes/super_admin");
 const scheduleCronJobs = require("./utility/cronJobs"); // Import the cron jobs
 
 const app = express();
-const port = process.env.port;
+const port = process.env.PORT || 5000; // Default port to 5000 if not specified in .env
 
 app.use(bodyParser.json());
 app.use(cors());
+
+// Serve static files from the 'images' directory
+app.use("/hotel_image", express.static("hotel_image"));
 
 // Start the cron jobs
 scheduleCronJobs();

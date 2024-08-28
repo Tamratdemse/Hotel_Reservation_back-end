@@ -7,8 +7,6 @@ const request = require("request");
 const fs = require("fs");
 const path = require("path");
 const { Chapa } = require("chapa-nodejs");
-const fs = require("fs");
-const path = require("path");
 
 const { userAuthenticate } = require("../utility/auth");
 const { calculateCheckoutDate } = require("../utility/utils");
@@ -150,7 +148,6 @@ router.post(
     }
   }
 );
-
 
 router.post("/login", async (req, res) => {
   const { email, password, subscription } = req.body;
