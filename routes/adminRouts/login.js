@@ -1,4 +1,3 @@
-// login.js
 require("dotenv").config();
 const express = require("express");
 const bcrypt = require("bcrypt");
@@ -35,16 +34,21 @@ loginRouter.post("/", async (req, res) => {
     }
 
     subscribe(email, subscription);
-    const token = jwt.sign(
-      {
-        admin_id: admin.admin_id,
-        name: admin.name,
-        admin_type: admin.admin_type,
-        hotel_id: admin.hotel_id,
-      },
-      JWT_SECRET,
-      { expiresIn: "10h" }
-    );
+
+    // Prepare the token payload
+    const payload = {
+      admin_id: admin.admin_id,
+      name: admin.name,
+      admin_type: admin.admin_type,
+    };
+
+    // Include hotel_id only if the admin_type is "admin"
+    if (admin.admin_type === "admin") {
+      payload.hotel_id = admin.hotel_id;
+    }
+
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "10h" });
+
     connection.release();
     res.json({ token });
   } catch (error) {

@@ -22,7 +22,9 @@ const authenticateToken = (req, res, next) => {
       admin_id: decoded.admin_id,
       name: decoded.name,
       admin_type: decoded.admin_type,
-      hotel_id: decoded.hotel_id,
+      ...(decoded.admin_type !== "superadmin" && {
+        hotel_id: decoded.hotel_id,
+      }),
     };
 
     next();

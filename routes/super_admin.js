@@ -2,31 +2,123 @@ const express = require("express");
 const mysql = require("mysql2/promise");
 const router = express.Router();
 const bcrypt = require("bcrypt");
+const { authenticateToken } = require("../utility/auth");
 // MySQL connection pool setup
-const pool = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "HOTEL_RESERVE",
-});
-
+const pool = require("../configration/db");
+router.use(authenticateToken);
 // Endpoint to get hotel statistics and all hotels
 router.get("/statistics", async (req, res) => {
   try {
     // Fetch hotel count
-    const countQuery = "SELECT COUNT(*) AS hotelCount FROM hotel";
-    const [countResults] = await pool.query(countQuery);
-    const hotelCount = countResults[0].hotelCount;
+    const hotelCountQuery = "SELECT COUNT(*) AS hotelCount FROM hotel";
+    const [hotelCountResults] = await pool.query(hotelCountQuery);
+    const hotelCount = hotelCountResults[0].hotelCount;
 
-    // Fetch all hotels
-    const hotelsQuery = "SELECT * FROM hotel";
-    const [hotelsResults] = await pool.query(hotelsQuery);
+    // Fetch admin count
+    const adminCountQuery = "SELECT COUNT(*) AS adminCount FROM admins";
+    const [adminCountResults] = await pool.query(adminCountQuery);
+    const adminCount = adminCountResults[0].adminCount;
 
-    // Return both hotel count and list of hotels
+    // Fetch room count
+    const roomCountQuery = "SELECT COUNT(*) AS roomCount FROM rooms";
+    const [roomCountResults] = await pool.query(roomCountQuery);
+    const roomCount = roomCountResults[0].roomCount;
+
+    // Fetch user count
+    const userCountQuery = "SELECT COUNT(*) AS userCount FROM users";
+    const [userCountResults] = await pool.query(userCountQuery);
+    const userCount = userCountResults[0].userCount;
+    const hotelsQuery = "SELECT * FROM HOTEL";
+    const [hotels] = await pool.query(hotelsQuery);
+
+    // Fetch number of registered users by year and month
+    const userRegistrationByMonthQuery = `
+      SELECT 
+        DATE_FORMAT(created_at, '%Y') AS year,
+        DATE_FORMAT(created_at, '%m') AS month,
+        COUNT(*) AS userCount
+      FROM users
+      GROUP BY year, month
+      ORDER BY year ASC, month ASC
+    `;
+    const [userRegistrationByMonthResults] = await pool.query(
+      userRegistrationByMonthQuery
+    );
+
+    // Create a list of month names
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    // Initialize an empty object to hold formatted data
+    const formattedUserRegistrationData = {};
+
+    // Populate the formatted data
+    userRegistrationByMonthResults.forEach((row) => {
+      const year = row.year;
+      const monthName = monthNames[parseInt(row.month) - 1];
+      const monthData = { month: monthName, userCount: row.userCount };
+
+      if (!formattedUserRegistrationData[year]) {
+        formattedUserRegistrationData[year] = monthNames.map((month) => ({
+          month,
+          userCount: 0,
+        }));
+      }
+
+      const monthIndex = monthNames.indexOf(monthName);
+      formattedUserRegistrationData[year][monthIndex] = monthData;
+    });
+
+    // Ensure that every year contains all months
+    for (const year in formattedUserRegistrationData) {
+      formattedUserRegistrationData[year] = monthNames.map((month) => {
+        const monthData = formattedUserRegistrationData[year].find(
+          (data) => data.month === month
+        );
+        return monthData || { month, userCount: 0 };
+      });
+    }
+
+    console.log(
+      hotelCount,
+      adminCount,
+      roomCount,
+      userCount,
+      formattedUserRegistrationData
+    );
+
+    // Return all statistics
     res.status(200).json({
       hotelCount,
-      hotels: hotelsResults,
+      adminCount,
+      roomCount,
+      userCount,
+      userRegistrationByMonth: formattedUserRegistrationData,
     });
+  } catch (error) {
+    console.error("Database query failed:", error);
+    return res.status(500).json({ error: "Database query failed" });
+  }
+});
+router.get("/hotels", async (req, res) => {
+  console.log("comes");
+  try {
+    const hotelsQuery = "SELECT * FROM HOTEL";
+    const [hotels] = await pool.query(hotelsQuery);
+    console.log(hotels);
+    res.status(200).json({ hotels });
   } catch (error) {
     console.error("Database query failed:", error);
     return res.status(500).json({ error: "Database query failed" });
@@ -36,6 +128,7 @@ router.get("/statistics", async (req, res) => {
 // Endpoint to add a hotel
 router.post("/add_hotels", async (req, res) => {
   const { hotel_name, location, photo, rating, subaccount_id } = req.body;
+  console.log(req.body);
 
   const query = `
         INSERT INTO hotel (hotel_name, location, photo, rating, subaccount_id)
@@ -67,7 +160,6 @@ router.post("/add_hotels", async (req, res) => {
     return res.status(500).json({ error: "Failed to add hotel" });
   }
 });
-
 // Endpoint to add an admin
 router.post("/add_admin", async (req, res) => {
   const { name, email, password, admin_type, hotel_id } = req.body;
@@ -102,6 +194,7 @@ router.post("/add_admin", async (req, res) => {
 // Delete hotel endpoint
 router.delete("/delete_hotel/:hotel_id", async (req, res) => {
   const { hotel_id } = req.params;
+  console.log(hotel_id);
 
   try {
     const connection = await pool.getConnection();
