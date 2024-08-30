@@ -1,10 +1,22 @@
 const express = require("express");
-const mysql = require("mysql2/promise");
 const router = express.Router();
 const bcrypt = require("bcrypt");
 const { authenticateToken } = require("../utility/auth");
 // MySQL connection pool setup
 const pool = require("../configration/db");
+const multer = require('multer');
+const path = require('path');
+
+// Set up multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'hotel_image/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
 router.use(authenticateToken);
 // Endpoint to get hotel statistics and all hotels
 router.get("/statistics", async (req, res) => {
@@ -118,14 +130,17 @@ router.get("/hotels", async (req, res) => {
 });
 
 // Endpoint to add a hotel
-router.post("/add_hotels", async (req, res) => {
-  const { hotel_name, location, photo, rating, subaccount_id } = req.body;
+router.post('/add_hotels', upload.single('photo'), async (req, res) => {
+  const { hotel_name, location, rating, subaccount_id } = req.body;
+  const photo = req.file ? req.file.filename : null;
+
   console.log(req.body);
+  console.log(req.file);
 
   const query = `
-        INSERT INTO hotel (hotel_name, location, photo, rating, subaccount_id)
-        VALUES (?, ?, ?, ?, ?)
-    `;
+    INSERT INTO hotel (hotel_name, location, photo, rating, subaccount_id)
+    VALUES (?, ?, ?, ?, ?)
+  `;
 
   try {
     const [result] = await pool.query(query, [
@@ -136,7 +151,6 @@ router.post("/add_hotels", async (req, res) => {
       subaccount_id,
     ]);
 
-    // Fetch the newly added hotel details or we can update id and name of the hotel
     const hotelId = result.insertId;
     const [hotelDetails] = await pool.query(
       "SELECT * FROM hotel WHERE hotel_id = ?",
@@ -149,7 +163,7 @@ router.post("/add_hotels", async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding hotel:", error);
-    return res.status(500).json({ error: "Failed to add hotel" });
+    res.status(500).json({ error: "Failed to add hotel" });
   }
 });
 // Endpoint to add an admin
