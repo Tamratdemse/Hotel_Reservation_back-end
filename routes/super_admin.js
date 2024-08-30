@@ -91,14 +91,6 @@ router.get("/statistics", async (req, res) => {
       });
     }
 
-    console.log(
-      hotelCount,
-      adminCount,
-      roomCount,
-      userCount,
-      formattedUserRegistrationData
-    );
-
     // Return all statistics
     res.status(200).json({
       hotelCount,
