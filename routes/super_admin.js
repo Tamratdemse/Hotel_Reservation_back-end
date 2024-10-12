@@ -4,17 +4,17 @@ const bcrypt = require("bcrypt");
 const { authenticateToken } = require("../utility/auth");
 // MySQL connection pool setup
 const pool = require("../configration/db");
-const multer = require('multer');
-const path = require('path');
+const multer = require("multer");
+const path = require("path");
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'hotel_image/');
+    cb(null, "hotel_image/");
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname));
-  }
+  },
 });
 const upload = multer({ storage: storage });
 router.use(authenticateToken);
@@ -130,7 +130,7 @@ router.get("/hotels", async (req, res) => {
 });
 
 // Endpoint to add a hotel
-router.post('/add_hotels', upload.single('photo'), async (req, res) => {
+router.post("/add_hotels", upload.single("photo"), async (req, res) => {
   const { hotel_name, location, rating, subaccount_id } = req.body;
   const photo = req.file ? req.file.filename : null;
 
@@ -182,7 +182,7 @@ router.post("/add_admin", async (req, res) => {
     const [result] = await pool.query(query, [
       name,
       email,
-      password,
+      hashedPassword,
       admin_type,
       hotel_id,
     ]);

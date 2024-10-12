@@ -79,7 +79,7 @@ categoryRouter.post(
       // Insert each room into the rooms table with a concatenated primary key
       const insertRoomQuery = `
         INSERT INTO rooms (room_id, room_number, category_id, hotel_id, availability)
-        VALUES (?, ?, ?, ?, '1')
+        VALUES (?, ?, ?, ?, '0')
       `;
 
       for (const roomNumber of roomNumbers) {

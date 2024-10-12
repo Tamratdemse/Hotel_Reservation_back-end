@@ -33,7 +33,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 const chapa = new Chapa({
-  secretKey: "CHASECK_TEST-sv12zkwQ3MrWGvs6SsMUZRm8rV2ZPzRq",
+  secretKey: process.env.secretKey,
 });
 
 // Endpoint to get number of users, hotels, and rooms
@@ -349,7 +349,7 @@ router.post("/reservation", userAuthenticate, async (req, res) => {
 
     // Fetch the first available room with the given hotel_id and category_id
     const [rooms] = await connection.query(
-      "SELECT room_number FROM Rooms WHERE hotel_id = ? AND category_id = ? AND availability = 1 LIMIT 1",
+      "SELECT room_number FROM Rooms WHERE hotel_id = ? AND category_id = ? AND availability = 0 LIMIT 1",
       [hotel_id, category_id]
     );
 
@@ -398,7 +398,7 @@ router.post("/reservation", userAuthenticate, async (req, res) => {
     // Mark the room as unavailable
     const roomId = GenerateRoomNumber(room_number, category_id, hotel_id);
     await connection.query(
-      "UPDATE Rooms SET availability = 0 WHERE room_id = ?",
+      "UPDATE Rooms SET availability = 1 WHERE room_id = ?",
       [roomId]
     );
     const [admins] = await connection.query(
@@ -492,7 +492,7 @@ router.get("/initialize", userAuthenticate, async (req, res) => {
     // Release the connection back to the pool
     connection.release();
 
-    // Check if subaccount_id was found
+    // Check if subaccount_id was foundm
     if (hotel.length === 0) {
       return res
         .status(404)
@@ -531,7 +531,7 @@ router.get("/initialize", userAuthenticate, async (req, res) => {
       method: "POST",
       url: "https://api.chapa.co/v1/transaction/initialize",
       headers: {
-        Authorization: "Bearer CHASECK_TEST-sv12zkwQ3MrWGvs6SsMUZRm8rV2ZPzRq",
+        Authorization: `Bearer ${process.env.secretKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),

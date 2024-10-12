@@ -291,7 +291,7 @@ reservationRouter.post("/checkout", authenticateToken, async (req, res) => {
 
       // Free the room by setting the room as available
       await connection.query(
-        "UPDATE Rooms SET availability = 1 WHERE room_id = ?",
+        "UPDATE Rooms SET availability = 0 WHERE room_id = ?",
         [room_id]
       );
 
@@ -313,7 +313,7 @@ reservationRouter.post("/checkout", authenticateToken, async (req, res) => {
 
       // Free the room by setting the room as available
       await connection.query(
-        "UPDATE Rooms SET availability = 1 WHERE room_id = ?",
+        "UPDATE Rooms SET availability = 0 WHERE room_id = ?",
         [room_id]
       );
     }

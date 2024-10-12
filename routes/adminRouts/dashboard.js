@@ -21,8 +21,8 @@ dashboardRouter.get("/", authenticateToken, async (req, res) => {
     const [roomStats] = await connection.query(
       `SELECT 
           COUNT(r.room_id) AS total_rooms,
-          SUM(CASE WHEN r.availability = 1 THEN 1 ELSE 0 END) AS available_rooms,
-          SUM(CASE WHEN r.availability = 0 THEN 1 ELSE 0 END) AS booked_rooms
+          SUM(CASE WHEN r.availability = 0 THEN 1 ELSE 0 END) AS available_rooms,
+          SUM(CASE WHEN r.availability = 1 THEN 1 ELSE 0 END) AS booked_rooms
        FROM Rooms r
        WHERE r.hotel_id = ?`,
       [req.admin.hotel_id]
@@ -44,17 +44,17 @@ dashboardRouter.get("/", authenticateToken, async (req, res) => {
 
     connection.release();
     hotel: hotelDetails[0], // Returning hotel details, including name and rating
-    res.json({
-      hotel: hotelDetails[0], // Returning hotel details, including name and rating
-      stats: {
-        averageRating: hotelDetails[0].rating,
-        total_rooms: roomStats[0].total_rooms,
-        booked_rooms: roomStats[0].booked_rooms,
-        available_rooms: roomStats[0].available_rooms,
-        pending_reservations_count: reservations.length, // Count of pending reservations
-      },
-      pending_reservations: reservations, // Returning all pending reservations with required details
-    });
+      res.json({
+        hotel: hotelDetails[0], // Returning hotel details, including name and rating
+        stats: {
+          averageRating: hotelDetails[0].rating,
+          total_rooms: roomStats[0].total_rooms,
+          booked_rooms: roomStats[0].booked_rooms,
+          available_rooms: roomStats[0].available_rooms,
+          pending_reservations_count: reservations.length, // Count of pending reservations
+        },
+        pending_reservations: reservations, // Returning all pending reservations with required details
+      });
   } catch (error) {
     console.error("Error querying database:", error);
     res.status(500).json({ error: "Internal Server Error" });
