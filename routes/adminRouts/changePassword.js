@@ -1,44 +1,41 @@
+// File: routes/admin/changePassword.js
+
 require("dotenv").config();
 const express = require("express");
-const bcrypt = require("bcrypt");
-
 const changepasswordRouter = express.Router();
 const { authenticateToken } = require("../../utility/auth");
-const pool = require("../../configration/db");
+const {
+  getAdminById,
+  updateAdminPassword,
+  verifyCurrentPassword,
+  hashNewPassword,
+} = require("../../services/admin/changePasswordService");
 
 // Admin Change Password
 changepasswordRouter.post("/", authenticateToken, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   try {
-    const connection = await pool.getConnection();
+    // Retrieve admin details using the service
+    const admin = await getAdminById(req.admin.admin_id);
 
-    const [admins] = await connection.query(
-      "SELECT * FROM admins WHERE admin_id = ?",
-      [req.admin.admin_id]
-    );
-
-    if (admins.length === 0) {
-      connection.release();
+    if (!admin) {
       return res.status(400).json({ error: "Admin not found" });
     }
 
-    const admin = admins[0];
-
-    // Verify current password
-    const passwordMatch = await bcrypt.compare(currentPassword, admin.password);
+    // Verify the current password
+    const passwordMatch = await verifyCurrentPassword(
+      currentPassword,
+      admin.password
+    );
     if (!passwordMatch) {
-      connection.release();
       return res.status(400).json({ error: "Current password is incorrect" });
     }
 
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    // Hash the new password and update it in the database using the service
+    const hashedNewPassword = await hashNewPassword(newPassword);
+    await updateAdminPassword(req.admin.admin_id, hashedNewPassword);
 
-    await connection.query(
-      "UPDATE admins SET password = ? WHERE admin_id = ?",
-      [hashedNewPassword, req.admin.admin_id]
-    );
-    connection.release();
     res.status(200).json({ message: "Password changed successfully" });
   } catch (error) {
     console.error("Error changing password:", error);

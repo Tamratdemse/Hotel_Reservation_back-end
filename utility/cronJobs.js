@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-const pool = require("../configration/db");
+const pool = require("../config/db");
 const { sendNotificationn } = require("./notificationSender");
 const { GenerateRoomNumber } = require("./utils");
 

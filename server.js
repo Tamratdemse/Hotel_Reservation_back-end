@@ -3,10 +3,10 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 
-require("./configration/db");
+require("./config/db");
 const users = require("./routes/user");
 const admins = require("./routes/admin");
-const superadmin = require("./routes/super_admin");
+const superadmin = require("./routes/superAdmin");
 
 const scheduleCronJobs = require("./utility/cronJobs"); // Import the cron jobs
 

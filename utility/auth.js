@@ -1,10 +1,11 @@
-// auth.js
-require("dotenv").config();
+// File: utility/auth.js
 
+require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// Middleware to authenticate admin token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; // Extract token from "Bearer <token>"
@@ -31,6 +32,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Middleware to authenticate user token (if applicable)
 const userAuthenticate = (req, res, next) => {
   const authHeader = req.headers["authorization"];
 
@@ -61,4 +63,19 @@ const userAuthenticate = (req, res, next) => {
     next();
   });
 };
-module.exports = { authenticateToken, userAuthenticate };
+
+// Function to generate JWT token for admin
+const generateToken = (admin) => {
+  return jwt.sign(
+    {
+      admin_id: admin.admin_id,
+      name: admin.name,
+      admin_type: admin.admin_type,
+      hotel_id: admin.hotel_id,
+    },
+    JWT_SECRET,
+    { expiresIn: "1h" } // Set expiration time as needed
+  );
+};
+
+module.exports = { authenticateToken, userAuthenticate, generateToken };

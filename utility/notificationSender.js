@@ -1,6 +1,6 @@
 require("dotenv").config();
 const webPush = require("web-push");
-const pool = require("../configration/db");
+const pool = require("../config/db");
 
 const publicVapidKey = process.env.PUBLIC_VAPID_KEY;
 const privateVapidKey = process.env.PRIVATE_VAPID_KEY;
